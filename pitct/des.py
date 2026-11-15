@@ -881,8 +881,8 @@ def events(name: str, convert: bool = True) -> list[Event]:
     des = des_info(name)
     return des.events(convert=convert)
 
-def display_automaton(name: str, convert: bool = True, color: bool = False, **kwargs) -> AutomatonDisplay:
-    return AutomatonDisplay(name, convert=convert, color=color, **kwargs)
+def display_automaton(name: str, convert: bool = True, group_transitions: bool = False, color: bool = False, **kwargs) -> AutomatonDisplay:
+    return AutomatonDisplay(name, convert=convert, group_transitions=group_transitions, color=color, **kwargs)
 
 # Create a new automaton with some states and transitions removed
 def subautomaton(new_automaton_name: str, automaton_name: str, del_states: StateList = [], del_trans: TransList = []) -> TransList:

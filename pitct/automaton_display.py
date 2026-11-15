@@ -16,7 +16,7 @@ HPCC_WASM_URL = "https://cdn.jsdelivr.net/npm/@hpcc-js/wasm-graphviz@1.18.0/+esm
 conf = Config.get_instance()
 
 class AutomatonDisplay(object):
-    def __init__(self, plant: str, convert: bool = True, color: bool = False):
+    def __init__(self, plant: str, convert: bool = True, color: bool = False, group_transitions: bool = False):
         self.__path = Path(conf.SAVE_FOLDER / (plant + DES_FILE_EXTENSION))
         self.__byte = self.__path.read_bytes()
         self.__data = umsgpack.unpackb(self.__byte)
@@ -46,24 +46,65 @@ class AutomatonDisplay(object):
         self.__graph.edge("_a", initial_state)
 
         # add transitions
+        grouped_transitions = {}
         for label in states:
             trans = states[label]["next"]
             if trans is not None:
                 for tran in trans:
                     label_text = str(NameConverter.event_decode(tran[0], convert))
-                    if color:
+                    source = str(NameConverter.state_decode(plant, label, convert))
+                    destination = str(NameConverter.state_decode(plant, tran[1], convert))
+
+                    if group_transitions:
+                        key = (source, destination)
+                        if key not in grouped_transitions:
+                            grouped_transitions[key] = []
+                        if color:
+                            grouped_transitions[key].append((
+                                label_text,
+                                "red" if tran[0] % 2 == 1 else "green"
+                            ))
+                        else:
+                            grouped_transitions[key].append((label_text,))
+
+                    elif color and not group_transitions:
                         self.__graph.edge(
-                            str(NameConverter.state_decode(plant, label, convert)),
-                            str(NameConverter.state_decode(plant, tran[1], convert)),
+                            source,
+                            destination,
                             label=label_text,
                             color="red" if tran[0] % 2 == 1 else "green",
                         )
                     else:
                         self.__graph.edge(
-                            str(NameConverter.state_decode(plant, label, convert)),
-                            str(NameConverter.state_decode(plant, tran[1], convert)),
+                            source,
+                            destination,
                             label=label_text
                         )
+        if group_transitions:
+            for (source, destination), events in grouped_transitions.items():
+                # Combine event names into a multiline label
+                if color:
+                    label_text = "\n".join(event[0] for event in events)
+                    edge_color = (
+                        "green"
+                        if any(event_color == "green" for _, event_color in events)
+                        else "red"
+                    )
+
+                    self.__graph.edge(
+                        source,
+                        destination,
+                        label=label_text,
+                        color=edge_color
+                    )
+                else:
+                    label_text = "\n".join(event[0] for event in events)
+
+                    self.__graph.edge(
+                        source,
+                        destination,
+                        label=label_text
+                    )
 
     def set_attr(self,
         layout="dot",
