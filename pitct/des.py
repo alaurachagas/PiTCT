@@ -16,6 +16,7 @@ from .libtct import call_program as __call
 from .config import DAT_FILE_EXTENSION, DES_FILE_EXTENSION, RST_FILE_EXTENSION, EDES_FILE_EXTENSION, TXT_FILE_EXTENSION
 from .config import Config
 from .des_check import gen_prm, del_prm, check_exist, check_ret_code, get_path, check_state_num
+from .supremica_converter import convert_wmod, ctrl_syst_to_xml
 
 conf = Config.get_instance()
 
@@ -1283,3 +1284,61 @@ def supconbnd(supconbnd_name:str, plant_name:str, spec_name:str, N:int):
 
 def hello_pitct():
     return "Hello pitct."
+
+
+def wmod2pitct(wmod_path: str, define_blocked: bool = True) -> dict:
+    """
+    Args:
+        filepath (str): The path to the .wmod file.
+        define_blocked (bool, optional): Checks if the automata has blocked events and adds as blocked transitions from state 'blk'. 
+    Output:
+        control_system (dict): A dictionary with all the automaton names divided between 'Plant', 'Supervisor' and 'Specification', and all the blocked events per automaton in 'Blocked_events'.
+    """
+
+    if not Path(wmod_path).exists():
+        raise FileNotFoundError(f"File not found: {wmod_path}")
+
+    (ctrl_syst, automata) = convert_wmod(wmod_path, define_blocked)
+    for automaton in automata:
+        Q = automata[automaton]["Q"]
+        trans = automata[automaton]["trans"]
+        size = automata[automaton]["size"]
+        create(automaton, size, trans, Q)
+
+    return ctrl_syst
+
+def pitct2xml(
+    automaton_names: list,
+    automaton_type: list,
+    output_path: str):
+    """
+    Export multiple PiTCT automata to a single XML file.
+
+    Args:
+        automaton_names (list): Names of the automata to export.
+        automaton_type (list): Types of the automata, e.g.
+            ['Supervisor', 'Plant', 'Specification'].        
+        output_path (str): Destination XML file path.
+    """
+
+    ctrl_syst = {
+        "Plant": [],
+        "Supervisor": [],
+        "Specification": [],
+        "Blocked_events": dict()
+    }
+    for name, type in (automaton_names, automaton_type):
+        ctrl_syst[type].append(name)
+
+    ctrl_syst_to_xml(ctrl_syst, output_path)
+
+def ctrlsyst2xml(ctrl_syst: dict, output_path: str):
+    """
+    Export a control system dictionary to a single XML file.
+
+    Args:
+        ctrl_syst (dict): Control system dictionary.
+        output_path (str): Destination XML file path.
+    """
+
+    ctrl_syst_to_xml(ctrl_syst, output_path)
